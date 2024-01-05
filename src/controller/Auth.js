@@ -123,16 +123,28 @@ export const changePassword = async (req, res) => {
   }
 };
 
-export const emailExists = (req, res) => {
+export const emailExists = async (req, res) => {
   try {
     const { email } = req.body;
-    const existingEmail = User.findOne({ email: email });
+    console.log(email);
+    const existingEmail = await User.findOne({ email: email });
+    console.log(existingEmail);
     if (existingEmail) {
       return res
         .status(409)
         .json({ code: 409, message: "email already exists" });
     }
     return res.status(200).json({ code: 200, message: "email don't exists" });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ code: 500, success: false, message: "internal error" });
+  }
+};
+
+export const changeAvatar = async (req, res) => {
+  try {
   } catch (error) {
     console.log(error);
     return res
