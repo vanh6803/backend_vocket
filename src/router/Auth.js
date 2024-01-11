@@ -7,6 +7,7 @@ import {
   updateProfile,
   changePassword,
   emailExists,
+  logout
 } from "../controller/Auth";
 import { checkToken } from "../middleware/index";
 
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+router.get("/logout", checkToken, logout);
 router.get("/user/detail", checkToken, detailUser);
 router.put("/user/update-profile", checkToken, updateProfile);
 router.put("/user/change-password", checkToken, changePassword);

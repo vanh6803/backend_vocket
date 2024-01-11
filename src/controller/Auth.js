@@ -4,7 +4,7 @@ import User from "../models/User";
 
 export const register = async (req, res) => {
   try {
-    const { email, password, username, fullName } = req.body;
+    const { email, password, fullName } = req.body;
     if (!email) {
       return res.status(403).json({ code: 403, message: "email is required" });
     }
@@ -12,7 +12,7 @@ export const register = async (req, res) => {
       return res.status(403).json({ code: 403, message: "email is password" });
     }
     const salt = await bcrypt.genSalt(10);
-    const newUser = new User({ email, password, username, fullName });
+    const newUser = new User({ email, password, fullName });
     newUser.password = await bcrypt.hash(password, salt);
     await newUser.save();
     return res
@@ -78,10 +78,10 @@ export const updateProfile = async (req, res) => {
   try {
     const id = req.user_id;
 
-    const { username, fullName } = req.body;
+    const { fullName } = req.body;
     const update = await User.findByIdAndUpdate(
       id,
-      { username: username, fullName: fullName },
+      { fullName: fullName },
       { new: true }
     );
 
@@ -145,6 +145,20 @@ export const emailExists = async (req, res) => {
 
 export const changeAvatar = async (req, res) => {
   try {
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ code: 500, success: false, message: "internal error" });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const user = req.user;
+    user.token = null;
+    await user.save();
+    return res.status(200).json({ code: 200, message: "Logout successful" });
   } catch (error) {
     console.log(error);
     return res
