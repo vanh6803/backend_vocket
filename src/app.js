@@ -6,6 +6,8 @@ import "./config/connectDB";
 import path from "path";
 import postRouter from "./router/Posts";
 import authRouter from "./router/Auth";
+import friendRouter from "./router/Friend";
+import Message from "./models/Message";
 
 const app = express();
 
@@ -22,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "assets")));
 
 app.use("/api", authRouter);
+app.use("/api/friend", friendRouter);
 app.use("/api/posts", postRouter);
 
 const server = app.listen(port, () => {
@@ -30,32 +33,25 @@ const server = app.listen(port, () => {
 
 const io = new Server(server);
 
-io.on("connecttion", (socket)=>{
-  console.log("user connected: ", socket);
+io.on("connection", (socket) => {
+  console.log("User connected", socket);
 
-  socket.on("setUser", (userId) => {
-    socket.data.userId = userId;
+  // Handle message events
+  socket.on("message", async (data) => {
+    try {
+      // Save the message to the database
+      const message = new Message(data);
+      await message.save();
+
+      // Emit the message to the sender and receiver
+      socket.emit("message", message);
+      io.to(data.receiver).emit("message", message);
+    } catch (error) {
+      console.error(error);
+    }
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
-  
-  socket.on("chat message", async (messageData) => {
-    try {
-      // Kiểm tra xem người nhận có phải là người đúng không
-      if (socket.id === messageData.receiverSocketId) {
-        // Gửi tin nhắn chỉ đến người nhận
-        io.to(messageData.receiverSocketId).emit("chat message", messageData);
-      }
-
-      // Kiểm tra xem người gửi có phải là người đúng không
-      if (socket.id === messageData.senderSocketId) {
-        // Gửi tin nhắn chỉ đến người gửi
-        io.to(messageData.senderSocketId).emit("chat message", messageData);
-      }
-    } catch (error) {
-      console.error('Error handling chat message:', error);
-    }
-  });
-})
+});
