@@ -1,26 +1,68 @@
 import Message from "../models/Message";
-import User from "./../models/User";
 
-export const getMessage = async (req, res, next) => {
+export const getMessage = async (req, res) => {
   try {
-    const { senderId, receiverId } = req.body;
-
-    const sebderExists = await User.exists({ _id: senderId });
-    const receiverExists = await User.exists({ _id: receiverId });
-
-    if (!sebderExists || !receiverExists) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const { senderId, receiverId } = req.params;
 
     const messages = await Message.find({
-      users: { $all: [senderId, receiverId] },
+      $or: [
+        { sender: senderId, receiver: receiverId },
+        { sender: receiverId, receiver: senderId },
+      ],
     }).sort({ createdAt: 1 });
 
-    return res.status(200).json({ result: messages, message: "success" });
+    res.json(messages);
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error(error);
+    res.status(500).send("Internal Server Error");
   }
 };
 
-export const sendMessage = async (req, res) => {}
+export const userMessaged = async (req, res) => {
+  try {
+    const latestMessages = await Message.aggregate([
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: {
+            $cond: {
+              if: { $eq: ["$sender", req.user._id] },
+              then: "$receiver",
+              else: "$sender",
+            },
+          },
+          latestMessage: { $first: "$message" },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 1,
+          latestMessage: 1,
+          user: {
+            fullName: 1,
+            email: 1,
+            avatar: 1,
+          },
+        },
+      },
+    ]);
+
+    res.json(latestMessages);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
+};

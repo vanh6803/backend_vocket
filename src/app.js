@@ -4,14 +4,17 @@ import "dotenv/config";
 import { Server } from "socket.io";
 import "./config/connectDB";
 import path from "path";
+import http from "http";
 import postRouter from "./router/Posts";
 import authRouter from "./router/Auth";
 import friendRouter from "./router/Friend";
+import MessageRouter from "./models/Message";
 import Message from "./models/Message";
 
 const app = express();
 
 const port = process.env.PORT || 3000;
+const server = http.createServer(app);
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleString()}] ${req.method} ${req.url}`);
@@ -26,32 +29,34 @@ app.use(express.static(path.join(__dirname, "assets")));
 app.use("/api", authRouter);
 app.use("/api/friend", friendRouter);
 app.use("/api/posts", postRouter);
-
-const server = app.listen(port, () => {
-  console.log(`http://localhost:${port}`);
-});
+app.use("/api/message", MessageRouter);
 
 const io = new Server(server);
 
 io.on("connection", (socket) => {
-  console.log("User connected", socket);
+  console.log("A user connected");
 
-  // Handle message events
-  socket.on("message", async (data) => {
-    try {
-      // Save the message to the database
-      const message = new Message(data);
-      await message.save();
+  socket.on("join", ({ senderId, receiverId }) => {
+    socket.join(`${senderId}-${receiverId}`);
+  });
 
-      // Emit the message to the sender and receiver
-      socket.emit("message", message);
-      io.to(data.receiver).emit("message", message);
-    } catch (error) {
-      console.error(error);
-    }
+  socket.on("chat message", async (msg) => {
+    const message = new Message({
+      sender: msg.sender,
+      receiver: msg.receiver,
+      message: msg.message,
+    });
+
+    await message.save();
+
+    io.to(`${msg.sender}-${msg.receiver}`).emit("chat message", msg);
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
+});
+
+server.listen(port, () => {
+  console.log(`http://localhost:${port}`);
 });
