@@ -201,9 +201,6 @@ export const suggestFriends = async (req, res) => {
   try {
     const user = req.user;
 
-    // Implement suggestion logic based on your requirements
-    // For example, suggest users who are not already friends and not in sent/received friend requests
-
     const suggestedFriends = await User.find({
       _id: { $ne: user._id },
       friends: { $nin: user.friends },
@@ -211,11 +208,32 @@ export const suggestFriends = async (req, res) => {
       sentFriendRequests: { $nin: user.sentFriendRequests },
     });
 
-    return res.status(200).json({
-      code: 200,
-      results: suggestedFriends,
-      message: "Suggested friends retrieved successfully",
-    });
+    // Kiểm tra số lượng người dùng trong danh sách suggestedFriends
+    if (suggestedFriends.length === 0) {
+      return res.status(200).json({
+        code: 200,
+        results: suggestedFriends,
+        message: "No suggested friends available",
+      });
+    } else if (suggestedFriends.length <= 3) {
+      // Nếu số lượng người dùng ít hơn hoặc bằng 3, trả về tất cả
+      return res.status(200).json({
+        code: 200,
+        results: suggestedFriends,
+        message: "Suggested friends retrieved successfully",
+      });
+    } else {
+      // Nếu số lượng người dùng lớn hơn 3, lấy ngẫu nhiên tối đa 10 người bạn
+      const randomFriends = suggestedFriends
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 10);
+
+      return res.status(200).json({
+        code: 200,
+        results: randomFriends,
+        message: "Suggested friends retrieved successfully",
+      });
+    }
   } catch (error) {
     console.log(error);
     return res
