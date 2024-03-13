@@ -5,9 +5,12 @@ export const getReceivedFriendRequests = async (req, res) => {
     const user = req.user;
 
     // Populate the friend requests with user details
-    const friendRequests = await User.find({
-      _id: { $in: user.freindRequests },
-    });
+    const friendRequests = await User.find(
+      {
+        _id: { $in: user.freindRequests },
+      },
+      "fullName email avatar"
+    );
 
     return res.status(200).json({
       code: 200,
@@ -46,18 +49,15 @@ export const sendFriendRequest = async (req, res) => {
     const { friendId } = req.body;
     const user = req.user;
 
-    // Check if the friendId is valid and not the user's own ID
     if (!friendId || friendId.toString() === user._id.toString()) {
       return res.status(400).json({ code: 400, message: "Invalid friendId" });
     }
 
-    // Check if the friendId exists in the User model
     const friendUser = await User.findById(friendId);
     if (!friendUser) {
       return res.status(404).json({ code: 404, message: "Friend not found" });
     }
 
-    // Check if the user has already sent a friend request to the friendId
     if (user.sentFriendRequests.includes(friendId)) {
       return res
         .status(400)
@@ -66,6 +66,8 @@ export const sendFriendRequest = async (req, res) => {
 
     // Send the friend request
     user.sentFriendRequests.push(friendId);
+    friendUser.freindRequests.push(user._id);
+    await friendUser.save();
     await user.save();
 
     return res
@@ -83,13 +85,23 @@ export const searchFriends = async (req, res) => {
   try {
     const { searchTerm } = req.query;
 
-    // Implement search logic based on your requirements
-    const searchResults = await User.find({
-      $or: [
-        { fullName: { $regex: searchTerm, $options: "i" } },
-        { email: { $regex: searchTerm, $options: "i" } },
-      ],
-    });
+    if (!searchTerm || searchTerm.trim() === "") {
+      return res.status(200).json({
+        code: 200,
+        results: [],
+        message: "No search term provided or empty query",
+      });
+    }
+
+    const searchResults = await User.find(
+      {
+        $or: [
+          { fullName: { $regex: searchTerm, $options: "i" } },
+          { email: { $regex: searchTerm, $options: "i" } },
+        ],
+      },
+      { fullName: 1, email: 1, avatar: 1, friends: 1, freindRequests: 1 }
+    );
 
     return res.status(200).json({
       code: 200,
@@ -201,14 +213,17 @@ export const suggestFriends = async (req, res) => {
   try {
     const user = req.user;
 
+    const existingFriendIds = [
+      ...user.friends,
+      ...user.freindRequests,
+      ...user.sentFriendRequests,
+    ];
+
     const suggestedFriends = await User.find({
       _id: { $ne: user._id },
-      friends: { $nin: user.friends },
-      freindRequests: { $nin: user.freindRequests },
-      sentFriendRequests: { $nin: user.sentFriendRequests },
+      _id: { $nin: existingFriendIds },
     });
 
-    // Kiểm tra số lượng người dùng trong danh sách suggestedFriends
     if (suggestedFriends.length === 0) {
       return res.status(200).json({
         code: 200,
@@ -216,14 +231,12 @@ export const suggestFriends = async (req, res) => {
         message: "No suggested friends available",
       });
     } else if (suggestedFriends.length <= 3) {
-      // Nếu số lượng người dùng ít hơn hoặc bằng 3, trả về tất cả
       return res.status(200).json({
         code: 200,
         results: suggestedFriends,
         message: "Suggested friends retrieved successfully",
       });
     } else {
-      // Nếu số lượng người dùng lớn hơn 3, lấy ngẫu nhiên tối đa 10 người bạn
       const randomFriends = suggestedFriends
         .sort(() => 0.5 - Math.random())
         .slice(0, 10);

@@ -62,7 +62,6 @@ export const login = async (req, res) => {
 export const detailUser = async (req, res) => {
   try {
     const user = req.user;
-    console.log(user);
     return res
       .status(200)
       .json({ code: 200, result: user, message: "get details successfully" });
