@@ -25,11 +25,39 @@ export const getReceivedFriendRequests = async (req, res) => {
   }
 };
 
+export const getSentFriendRequests = async (req, res) => {
+  try {
+    const user = req.user;
+
+    // Populate the friend requests with user details
+    const sentRequests = await User.find(
+      {
+        _id: { $in: user.sendFriendRequest },
+      },
+      "fullName email avatar"
+    );
+
+    return res.status(200).json({
+      code: 200,
+      results: sentRequests,
+      message: "Sent friend requests retrieved successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ code: 500, success: false, message: "Internal error" });
+  }
+};
+
 export const getCurrentFriends = async (req, res) => {
   try {
     const user = req.user;
     // Populate the friends with user details
-    const friends = await User.find({ _id: { $in: user.friends } });
+    const friends = await User.find(
+      { _id: { $in: user.friends } },
+      "fullName email avatar"
+    );
 
     return res.status(200).json({
       code: 200,
@@ -121,21 +149,28 @@ export const acceptFriendRequest = async (req, res) => {
     const { friendId } = req.body;
     const user = req.user;
 
-    // Check if the friendId exists in the user's receivedFriendRequests
+    // Kiểm tra xem friendId có tồn tại trong danh sách yêu cầu kết bạn của user không
     if (!user.freindRequests.includes(friendId)) {
       return res
         .status(404)
         .json({ code: 404, message: "Friend request not found" });
     }
 
-    // Accept the friend request
+    // Chấp nhận yêu cầu kết bạn
     user.freindRequests = user.freindRequests.filter(
       (id) => id.toString() !== friendId.toString()
     );
     user.friends.push(friendId);
 
     const friendUser = await User.findById(friendId);
+
+    // Chuyển id của user vào danh sách bạn bè của friendUser
     friendUser.friends.push(user._id);
+
+    // Xóa id của user trong danh sách yêu cầu kết bạn của friendUser
+    friendUser.sentFriendRequests = friendUser.sentFriendRequests.filter(
+      (id) => id.toString() !== user._id.toString()
+    );
 
     await user.save();
     await friendUser.save();
@@ -219,10 +254,12 @@ export const suggestFriends = async (req, res) => {
       ...user.sentFriendRequests,
     ];
 
-    const suggestedFriends = await User.find({
-      _id: { $ne: user._id },
-      _id: { $nin: existingFriendIds },
-    });
+    const suggestedFriends = await User.find(
+      {
+        _id: { $ne: user._id, $nin: existingFriendIds },
+      },
+      "fullName email avatar"
+    );
 
     if (suggestedFriends.length === 0) {
       return res.status(200).json({

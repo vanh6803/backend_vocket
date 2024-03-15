@@ -17,7 +17,13 @@ const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 app.use((req, res, next) => {
-  console.log(`[${new Date().toLocaleString()}] ${req.method} ${req.url}`);
+  console.log(
+    `[${new Date().toLocaleString()}] ${req.method} ${req.originalUrl} ${
+      res.statusCode
+    } ${res.get("Content-Length") || "-"} ${
+      res.get("X-Response-Time") || "-"
+    } ms`
+  );
   next();
 });
 
