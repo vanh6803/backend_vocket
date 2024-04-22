@@ -1,6 +1,6 @@
 import express from "express";
 import { checkToken } from "../middleware/index";
-import { getMessage, userMessaged } from "../controller/Message";
+import { getMessage, userMessaged } from "../controller/MessageController";
 
 const router = express.Router();
 

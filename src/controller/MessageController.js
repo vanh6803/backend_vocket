@@ -1,4 +1,4 @@
-import Message from "../models/Message";
+import Message from "../models/MessageModel";
 
 export const getMessage = async (req, res) => {
   try {
@@ -9,7 +9,8 @@ export const getMessage = async (req, res) => {
         { sender: senderId, receiver: receiverId },
         { sender: receiverId, receiver: senderId },
       ],
-    }).sort({ createdAt: 1 });
+    })
+    .sort({ createdAt: -1 });
 
     res.json(messages);
   } catch (error) {

@@ -8,8 +8,8 @@ import http from "http";
 import postRouter from "./router/Posts";
 import authRouter from "./router/Auth";
 import friendRouter from "./router/Friend";
-import MessageRouter from "./models/Message";
-import Message from "./models/Message";
+import MessageRouter from "./router/MessageRouter";
+import Message from "./models/MessageModel";
 
 const app = express();
 
@@ -37,29 +37,44 @@ app.use("/api/friend", friendRouter);
 app.use("/api/posts", postRouter);
 app.use("/api/message", MessageRouter);
 
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 io.on("connection", (socket) => {
-  console.log("A user connected");
+  console.log("A user connected", socket.id);
 
-  socket.on("join", ({ senderId, receiverId }) => {
-    socket.join(`${senderId}-${receiverId}`);
+  // Join a room
+  socket.on("joinRoom", (room) => {
+    socket.join(room);
+    console.log(`User joined room: ${room}`);
   });
 
-  socket.on("chat message", async (msg) => {
-    const message = new Message({
-      sender: msg.sender,
-      receiver: msg.receiver,
-      message: msg.message,
-    });
+  // Send message to a specific room
+  socket.on("sendMessage", async (data) => {
+    if (!data.sender || !data.receiver || !data.message || !data.room) {
+      console.error("Missing fields", data);
+      return;
+    }
 
-    await message.save();
-
-    io.to(`${msg.sender}-${msg.receiver}`).emit("chat message", msg);
+    try {
+      const msg = new Message({
+        sender: data.sender,
+        receiver: data.receiver,
+        message: data.message,
+      });
+      await msg.save();
+      io.to(data.room).emit("receiveMessage", msg);
+    } catch (error) {
+      console.error("Error saving message:", error);
+    }
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    console.log("User disconnected", socket.id);
   });
 });
 

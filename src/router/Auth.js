@@ -7,7 +7,8 @@ import {
   updateProfile,
   changePassword,
   emailExists,
-  logout
+  logout,
+  changeAvatar,
 } from "../controller/Auth";
 import { checkToken } from "../middleware/index";
 
@@ -20,5 +21,11 @@ router.get("/user/detail", checkToken, detailUser);
 router.put("/user/update-profile", checkToken, updateProfile);
 router.put("/user/change-password", checkToken, changePassword);
 router.post("/user/check-email", emailExists);
+router.put(
+  "/user/change-avatar",
+  checkToken,
+  upload("users").single("avatar"),
+  changeAvatar
+);
 
 export default router;

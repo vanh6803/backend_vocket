@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../models/User";
+import fs from "fs";
 
 export const register = async (req, res) => {
   try {
@@ -144,6 +145,40 @@ export const emailExists = async (req, res) => {
 
 export const changeAvatar = async (req, res) => {
   try {
+    const user = req.user;
+
+    console.log(req.file);
+    if (!req.file) {
+      return res.status(404).json({ code: 404, message: "file not found" });
+    }
+    let image = `users/${req.file.filename}`;
+
+    await User.findByIdAndUpdate(user._id, { avatar: image });
+
+    fs.unlinkSync(`src/assets/${user.avatar}`);
+
+    return res.status(200).json({
+      code: 200,
+      message: "avatar updated successfully updated",
+      image,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ code: 500, success: false, message: "internal error" });
+  }
+};
+
+export const removeAvatar = async (req, res) => {
+  try {
+    const user = req.user;
+    user.avatar = "";
+    user.save();
+
+    return res
+      .status(200)
+      .json({ code: 200, message: "remove avatar success" });
   } catch (error) {
     console.log(error);
     return res

@@ -3,8 +3,6 @@ import User from "../models/User";
 export const getReceivedFriendRequests = async (req, res) => {
   try {
     const user = req.user;
-
-    // Populate the friend requests with user details
     const friendRequests = await User.find(
       {
         _id: { $in: user.freindRequests },
@@ -28,11 +26,9 @@ export const getReceivedFriendRequests = async (req, res) => {
 export const getSentFriendRequests = async (req, res) => {
   try {
     const user = req.user;
-
-    // Populate the friend requests with user details
     const sentRequests = await User.find(
       {
-        _id: { $in: user.sendFriendRequest },
+        _id: { $in: user.sentFriendRequests },
       },
       "fullName email avatar"
     );
@@ -53,7 +49,6 @@ export const getSentFriendRequests = async (req, res) => {
 export const getCurrentFriends = async (req, res) => {
   try {
     const user = req.user;
-    // Populate the friends with user details
     const friends = await User.find(
       { _id: { $in: user.friends } },
       "fullName email avatar"
@@ -91,8 +86,6 @@ export const sendFriendRequest = async (req, res) => {
         .status(400)
         .json({ code: 400, message: "Friend request already sent" });
     }
-
-    // Send the friend request
     user.sentFriendRequests.push(friendId);
     friendUser.freindRequests.push(user._id);
     await friendUser.save();
@@ -148,26 +141,18 @@ export const acceptFriendRequest = async (req, res) => {
   try {
     const { friendId } = req.body;
     const user = req.user;
-
-    // Kiểm tra xem friendId có tồn tại trong danh sách yêu cầu kết bạn của user không
     if (!user.freindRequests.includes(friendId)) {
       return res
         .status(404)
         .json({ code: 404, message: "Friend request not found" });
     }
-
-    // Chấp nhận yêu cầu kết bạn
     user.freindRequests = user.freindRequests.filter(
       (id) => id.toString() !== friendId.toString()
     );
     user.friends.push(friendId);
 
     const friendUser = await User.findById(friendId);
-
-    // Chuyển id của user vào danh sách bạn bè của friendUser
     friendUser.friends.push(user._id);
-
-    // Xóa id của user trong danh sách yêu cầu kết bạn của friendUser
     friendUser.sentFriendRequests = friendUser.sentFriendRequests.filter(
       (id) => id.toString() !== user._id.toString()
     );
@@ -190,19 +175,22 @@ export const rejectFriendRequest = async (req, res) => {
   try {
     const { friendId } = req.body;
     const user = req.user;
-
-    // Check if the friendId exists in the user's receivedFriendRequests
     if (!user.freindRequests.includes(friendId)) {
       return res
         .status(404)
         .json({ code: 404, message: "Friend request not found" });
     }
-
-    // Reject the friend request
     user.freindRequests = user.freindRequests.filter(
       (id) => id.toString() !== friendId.toString()
     );
+
+    const friendUser = await User.findById(friendId);
+    friendUser.sentFriendRequests = friendUser.sentFriendRequests.filter(
+      (id) => id.toString() !== user._id.toString()
+    );
+
     await user.save();
+    await friendUser.save();
 
     return res
       .status(200)
@@ -219,19 +207,22 @@ export const cancelFriendRequest = async (req, res) => {
   try {
     const { friendId } = req.body;
     const user = req.user;
-
-    // Check if the friendId exists in the user's sentFriendRequests
     if (!user.sentFriendRequests.includes(friendId)) {
       return res
         .status(404)
         .json({ code: 404, message: "Friend request not found" });
     }
-
-    // Cancel the friend request
     user.sentFriendRequests = user.sentFriendRequests.filter(
       (id) => id.toString() !== friendId.toString()
     );
+
+    const friendUser = await User.findById(friendId);
+    friendUser.freindRequests = friendUser.freindRequests.filter(
+      (id) => id.toString() !== user._id.toString()
+    );
+
     await user.save();
+    await friendUser.save();
 
     return res
       .status(200)
@@ -284,6 +275,36 @@ export const suggestFriends = async (req, res) => {
         message: "Suggested friends retrieved successfully",
       });
     }
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ code: 500, success: false, message: "Internal error" });
+  }
+};
+
+export const unfriend = async (req, res) => {
+  try {
+    const { friendId } = req.body;
+    const user = req.user;
+    if (!user.friends.includes(friendId)) {
+      return res.status(404).json({ code: 404, message: "Friend not found" });
+    }
+    user.friends = user.friends.filter(
+      (id) => id.toString() !== friendId.toString()
+    );
+
+    const friendUser = await User.findById(friendId);
+    friendUser.friends = friendUser.friends.filter(
+      (id) => id.toString() !== user._id.toString()
+    );
+
+    await user.save();
+    await friendUser.save();
+
+    return res
+      .status(200)
+      .json({ code: 200, message: "remove friend successfully" });
   } catch (error) {
     console.log(error);
     return res

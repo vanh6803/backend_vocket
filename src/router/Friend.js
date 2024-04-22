@@ -10,6 +10,7 @@ import {
   getReceivedFriendRequests,
   getCurrentFriends,
   getSentFriendRequests,
+  unfriend,
 } from "../controller/Friend";
 import { checkToken } from "../middleware/index";
 
@@ -20,6 +21,7 @@ router.get("/search-friends", searchFriends);
 router.put("/accept-friend-request", checkToken, acceptFriendRequest);
 router.put("/reject-friend-request", checkToken, rejectFriendRequest);
 router.put("/cancel-friend-request", checkToken, cancelFriendRequest);
+router.put("/unfriend", checkToken, unfriend);
 router.get("/received-friend-requests", checkToken, getReceivedFriendRequests);
 router.get("/sent-friend-requests", checkToken, getSentFriendRequests);
 router.get("/current-friends", checkToken, getCurrentFriends);

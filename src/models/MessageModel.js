@@ -12,6 +12,7 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    tag: { type: mongoose.Schema.Types.ObjectId, ref: "Posts" },
     message: { type: String, required: true },
   },
   {
