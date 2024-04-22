@@ -44,6 +44,8 @@ const io = new Server(server, {
   },
 });
 
+global.io = io;
+
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 

@@ -1,10 +1,13 @@
 import express from "express";
 import { checkToken } from "../middleware/index";
-import { getMessage, userMessaged } from "../controller/MessageController";
+import {
+  getFriendsAndLatestMessages,
+  getMessage,
+} from "../controller/MessageController";
 
 const router = express.Router();
 
 router.get("/:senderId/:receiverId", getMessage);
-router.get("/chats", userMessaged);
+router.get("/friends-messages", checkToken, getFriendsAndLatestMessages);
 
 export default router;
